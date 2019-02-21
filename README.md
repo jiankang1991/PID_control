@@ -1,7 +1,8 @@
-# CarND-Controls-PID
-Self-Driving Car Engineer Nanodegree Program
+# My solution for CarND-Controls-PID project
 
 ---
+[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
+
 
 ## Dependencies
 
@@ -50,49 +51,102 @@ using the following settings:
 
 Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
 
-## Project Instructions and Rubric
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+---
 
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
+## Project overview
 
-## Hints!
+PID control is technique to revise the behavior of vehicle such as steering angle and throttle value based on several P(propotional), I(integral) and D(differential) loss components, given the CTE (cross track error).
 
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
+Take steering angle for example, it can be set by 
 
-## Call for IDE Profiles Pull Requests
+$\mathrm{steer}=-K_p*L_p-K_i*L_i-K_d*L_d$
 
-Help your fellow students!
 
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
 
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
+* P component, directly minimize the CTE by setting it with a propotional factor, just using this term can make the real trajectory vary around the reference trajectory.
+* In order to avoid the above problem, D component takes effect. It minimizes the change between the two nearby points in the trajectory, which can smooth the real trajectory.
+* I component is to compensate the systematic bias.
 
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
+With c++, I implement PID by:
 
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
+```
 
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
+PID::PID() {}
 
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
+PID::~PID() {}
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+void PID::Init(double Kp_, double Ki_, double Kd_) {
+  /**
+   * TODO: Initialize PID coefficients (and errors, if needed)
+   */
+
+  this->Kp = Kp_;
+  this->Ki = Ki_;
+  this->Kd = Kd_;
+
+  this->p_error = 0.0;
+  this->d_error = 0.0;
+  this->i_error = 0.0;
+
+  this->prev_cte = 0.0;
+
+}
+
+void PID::UpdateError(double cte) {
+  /**
+   * TODO: Update PID errors based on cte.
+   */
+
+  this->p_error = cte;
+  this->d_error = cte - this->prev_cte;
+  this->i_error += cte;
+
+  this->prev_cte = cte;
+
+}
+
+double PID::TotalError() {
+  /**
+   * TODO: Calculate and return the total error
+   */
+
+  double total_error = this->p_error + this->d_error + this->i_error;
+
+  return total_error;  // TODO: Add your total error calc here!
+}
+
+double PID::CalcSteer() {
+
+  double steer_angle = -this->Kp*this->p_error - this->Kd*this->d_error - this->Ki*this->i_error; 
+
+  return steer_angle;
+
+
+}
+```
+
+In order to initialize the proper parameter for the car to move, I first set the I component to zero. Then, I tune the P and D. After I make sure the car can successfully run 700 cycles in the simulator and I make twiddle algorithm to better finetune those parameters. 
+
+## Twiddle
+
+Twiddle algorithm is a proper parameter selection technique, which can minimize the error. The key idea is to tune each individual parameter by increasing and decreasing its values and observe the change of error. If either the direction can favors for the error minimization, the change rate of such direction should be enlarged, otherwise, decrease the change rate. 
+
+Below is the twiddle algorithm implemented for the simulator:
+
+![alt text](./twiddle.png)
+
+
+## Result
+
+![alt text](./result.gif)
+
+
+## Discussion
+
+Bayesian optimization also comes into my mind of parameter tuning, I implement it with python for the robot example utilized in the lecture. I find it can give us a better parameter solution. Please have a check on my [repo](https://github.com/karlTUM/tiny_proj_PID_para_twiddle_bayesian_opti).
+
+
+
+
 
